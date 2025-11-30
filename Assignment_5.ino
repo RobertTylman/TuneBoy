@@ -1,65 +1,60 @@
-/*
-  Basic template for working with a stock MEAP board.
- */
-
 #define CONTROL_RATE 128  // Hz, powers of 2 are most reliable
 #include <Meap.h>         // MEAP library, includes all dependent libraries, including all Mozzi modules
-
-#include "SynthOscillator.h"  //Adds Synth Oscillator class
-
+#include <stdlib.h>       // for rand()
 #include <tables/sq8192_32harm_int8.h>
-mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc1(sq8192_32harm_int8_DATA);      //Bass
-mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc2(sq8192_32harm_int8_DATA);      //Mid
-mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc3(sq8192_32harm_int8_DATA);      //Melody
-mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> noiseOsc(sq8192_32harm_int8_DATA);  //Noise
 
-//oscillator envelopes
+mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc1(sq8192_32harm_int8_DATA);  //Bass
+mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc2(sq8192_32harm_int8_DATA);  //Mid
+mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc3(sq8192_32harm_int8_DATA);  //Melody
+
+//Envelopes
 ADSR<AUDIO_RATE, AUDIO_RATE> env1;
 ADSR<AUDIO_RATE, AUDIO_RATE> env2;
 ADSR<AUDIO_RATE, AUDIO_RATE> env3;
-
-//noise envelope
 ADSR<CONTROL_RATE, AUDIO_RATE> noiseEnv;
 
 //RANDOM VARIABLES:
 int randTempo = 40.0 + ((float)rand() / RAND_MAX) * 140.0;         // random 40–180 BPM
 int randTranspose = -12 + (int)(((float)rand() / RAND_MAX) * 25);  // -12 to 12;
+int oscMode = 0;                                                   // keeps track of oscillator modes
+int arpMode = 0;                                                   // keeps track of what arp mode to use
+int bassMode = 0;                                                  // keeps track of what bass mode to use
+int drumMode = 0;                                                  // keeps track of what bass mode to use
+int randProg = 0;
 
-#include <stdlib.h>  // for rand()
+//MIXER
+float osc1Volume_orig = 0.5;      //bass
+float osc2Volume_orig = 0.1;      //mid
+float osc3Volume_orig = 0.6;      //melody
+float noiseOscVolume_orig = 1.0;  //noise
 
-int oscMode = 0;  // keeps track of oscillator modes
-
-int arpMode = 0;   // keeps track of what arp mode to use
-int bassMode = 0;  // keeps track of what bass mode to use
-
-// Original volumes from mode selection:
-float osc1Volume_orig = 0.8;
-float osc2Volume_orig = 0.2;
-float osc3Volume_orig = 0.6;
-float noiseOscVolume_orig = 0.5;
-
-// Active volumes used for audio:
+//Active volumes used for audio:
 float osc1Volume;
 float osc2Volume;
 float osc3Volume;
 float noiseOscVolume;
 
-// Mute toggles:
+//Mute toggles:
 bool osc1Muted = false;
 bool osc2Muted = false;
 bool osc3Muted = false;
 bool oscNoiseMuted = false;
 
 bool halfTimeToggle = false;
+static bool silentPhrase = false;
 
-uint16_t lfsr = 0xACE1u;  // Initial value (seed) for the 16-bit LFSR, must be non-zero
-int lfsr_divisor = 0;
-int lfsr_countdown = 0;
-int lfsr_last = 0;
+// ---------- LFSR STATE ----------
+uint16_t lfsr = 0xACE1u;  // 16-bit LFSR seed
+int lfsr_divisor = 32;    // equivalent to reset value for timing
+int lfsr_countdown = 0;   // counts down to next LFSR update
+int lfsr_last = 0;        // last output sample (+127 or -127)
+bool short_mode = false;  // optional short LFSR mode
 
-bool short_mode = false;
+//DRUM SEQUENCING GLOBALS
+int drumStep = 0;            // keeps track of which drum to play
+int stepCounter = 0;         // counts beats
+const int beatsPerStep = 4;  // advance every 16 beats
 
-int drumStep = 0;  // keeps track of which drum to play
 enum DrumType {
   KICK,
   SNARE,
@@ -67,131 +62,23 @@ enum DrumType {
   TOM,
   CLAP,
   RIM,
-  COWBELL
+  COWBELL,
 };
 
-// DrumType drumSequence1[]  = { KICK, HIHAT, SNARE, HIHAT };
-// DrumType drumSequence2[]  = { KICK, SNARE, HIHAT };
-// DrumType drumSequence3[]  = { KICK, HIHAT, KICK, HIHAT, SNARE, HIHAT };
-// DrumType drumSequence4[]  = { KICK, CLAP };
-// DrumType drumSequence5[]  = { KICK, HIHAT, SNARE, HIHAT, KICK };
-// DrumType drumSequence6[]  = { KICK, HIHAT, HIHAT, SNARE };
-// DrumType drumSequence7[]  = { KICK, HIHAT, SNARE, HIHAT, CLAP, HIHAT, TOM };
-// DrumType drumSequence8[]  = { KICK, RIM, HIHAT };
-// DrumType drumSequence9[]  = { KICK, HIHAT, KICK, HIHAT, KICK, HIHAT };
-// DrumType drumSequence10[] = { SNARE, HIHAT, KICK };
-// DrumType drumSequence11[] = { KICK, SNARE, KICK, SNARE };
-// DrumType drumSequence12[] = { HIHAT, HIHAT, HIHAT, HIHAT };
-// DrumType drumSequence13[] = { KICK, HIHAT, SNARE, HIHAT, KICK, TOM, HIHAT, CLAP };
-// DrumType drumSequence14[] = { KICK };
-// DrumType drumSequence15[] = { KICK, HIHAT, KICK, HIHAT, SNARE };
-// DrumType drumSequence16[] = { KICK, SNARE, HIHAT, HIHAT, KICK, RIM };
+// Map DrumType enum to string names
+const char* drumTypeNames[] = {
+  "KICK",
+  "SNARE",
+  "HIHAT",
+  "TOM",
+  "CLAP",
+  "RIM",
+  "COWBELL"
+};
 
-// Generates a pseudo-random Gameboy-style noise sample using a 15-bit Linear Feedback Shift Register (LFSR)
-// Basically this outputs 127 or -127 for each sample. this back and forth creates a white noise effect
-int8_t gameboyNoise() {
-  if (--lfsr_countdown <= 0) {
-    lfsr_countdown = lfsr_divisor;
-    uint8_t bit = ((lfsr >> 0) ^ (lfsr >> 1)) & 1;  // XOR the first two bits to create feedback
-    lfsr = (lfsr >> 1) | (bit << 14);               // Shift LFSR right and insert feedback bit at the top
-    if (short_mode) {
-      lfsr = (lfsr & 0b10111111) | (bit << 6);
-    }
-    lfsr_last = (lfsr & 1) ? 127 : -127;
-  }
-  return lfsr_last;  // Output +127 or -127 as a noise sample (audio amplitude for a Gameboy-style hiss)
-}
-
-//updates the oscillator volumes for mute functionality
-void updateOscillatorVolumes() {
-  osc1Volume = osc1Muted ? 0.0 : osc1Volume_orig;
-  osc2Volume = osc2Muted ? 0.0 : osc2Volume_orig;
-  osc3Volume = osc3Muted ? 0.0 : osc3Volume_orig;
-  noiseOscVolume = oscNoiseMuted ? 0.0 : noiseOscVolume_orig;
-}
-
-//changes the oscillator mode so that different instruments play each time the randomize button is pressed
-void oscModeUpdater() {
-  switch (oscMode) {
-
-    case 1:  // Mode 1: all 4 on
-      osc1Muted = false;
-      osc2Muted = false;
-      osc3Muted = false;
-      oscNoiseMuted = false;
-      break;
-
-    case 2:  // Mode 2: bass + lead
-      osc1Muted = false;
-      osc2Muted = true;
-      osc3Muted = false;
-      oscNoiseMuted = true;
-      break;
-
-    case 3:  // Mode 3: lead only
-      osc1Muted = true;
-      osc2Muted = true;
-      osc3Muted = false;
-      oscNoiseMuted = true;
-      break;
-
-    case 4:  // Mode 4: synth (mid) + bass
-      osc1Muted = false;
-      osc2Muted = false;
-      osc3Muted = true;
-      oscNoiseMuted = true;
-      break;
-
-    case 5:  // Mode 5: just middle synth
-      osc1Muted = true;
-      osc2Muted = false;
-      osc3Muted = true;
-      oscNoiseMuted = true;
-      break;
-
-    case 6:  // Mode 6: just white noise
-      osc1Muted = true;
-      osc2Muted = true;
-      osc3Muted = true;
-      oscNoiseMuted = false;
-      break;
-  }
-}
-
-//randomizes the oscillator envelopes each time this is called
-void randomizeEnvelopes() {
-  // --- osc1 — lead ---
-  env1.setADLevels(
-    255,             // attack level stays max
-    random(40, 150)  // random decay level
-  );
-  env1.setTimes(
-    random(3, 40),   // attack time
-    random(10, 80),  // decay time
-    random(10, 60),  // sustain time
-    random(5, 40)    // release time
-  );
-
-  // --- osc2 — mid synth ---
-  env2.setADLevels(
-    255,
-    random(60, 180));
-  env2.setTimes(
-    random(10, 60),
-    random(20, 90),
-    random(10, 80),
-    random(10, 60));
-
-  // --- osc3 — bass ---
-  env3.setADLevels(
-    255,
-    random(10, 70));
-  env3.setTimes(
-    random(1, 20),
-    random(5, 40),
-    random(5, 30),
-    random(5, 30));
-}
+// ---------- Active sequence ----------
+DrumType* activeSequence;
+uint8_t sequenceLength;
 
 Meap meap;                                            // creates MEAP object to handle inputs and other MEAP library functions
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);  // defines MIDI in/out ports
@@ -216,8 +103,6 @@ int currentPattern = 0;  // select pattern per chord
 
 int transposer = 0;  // global semitone transpose
 
-int mode = 1;  // 0 = fixed progressions, 1 = random transition
-
 int currentProgression = 1;  // index of the active chord progression
 int progressionIndex = 0;    // index within that progression
 
@@ -231,20 +116,16 @@ int beatCounter = 0;
 /*****ADDS ALL CHORD AND SCALE DATA*****/
 #include "ChordData.h"
 
-bool useMinorMode = false;  // set true for G minor, false for G major
+bool useMinorMode = false;  // set true for minor, false for major
 
 int (*chordNotes)[4] = useMinorMode ? chordNotes_minor : chordNotes_major;
-int (*nextChord)[4] = useMinorMode ? nextChord_minor : nextChord_major;
-int (*chordProbabilities)[4] = useMinorMode ? chordProbabilities_minor : chordProbabilities_major;
+int (*nextChord)[6] = useMinorMode ? nextChord_minor : nextChord_major;
+int (*chordProbabilities)[6] = useMinorMode ? chordProbabilities_minor : chordProbabilities_major;
 
-int numProgressions = 5;
+int chordMode = 0;
+bool newProg = false;
 
-SynthOscillator bass;
-SynthOscillator banjo;
-SynthOscillator melody;
-SynthOscillator noise;
-
-// Global state to keep track of current pattern and step
+//Global state to keep track of current pattern and step
 int currentBanjoPattern = 0;
 
 void setup() {
@@ -260,31 +141,83 @@ void setup() {
   randomizeEnvelopes();
 }
 
+// chordMode: 0 = predefined progression, 1 = random transitions
+// useMinorMode: true = minor, false = major
 int getNextChord() {
-  if (mode == 0) {  // predefined progression mode
-    int chord = chordProgressions[currentProgression][progressionIndex];
-    progressionIndex++;
-    if (chordProgressions[currentProgression][progressionIndex] == -1)
-      progressionIndex = 0;
-    return chord;
+    int chord = 0;
+    const char** chordLetters = useMinorMode ? chordLetters_minor : chordLetters_major;
+    int (*chordProgressions)[8] = useMinorMode ? chordProgressions_minor : chordProgressions_major;
 
-  } else {  // random transition mode
-    int randVal = rand() % 100;
-    for (int i = 0; i < 4; i++) {
-      if (nextChord[currentChord][i] == -1) break;
-      if (randVal < chordProbabilities[currentChord][i])
-        return nextChord[currentChord][i];
+    // If we're at the start of a new progression (progressionIndex == 0), pick a random progression
+    if (newProg) {
+        currentProgression = randProg;
+        progressionIndex = 0;
+        newProg = false;
     }
-  }
-  return 0;  // fallback to G
+
+    if (chordMode == 0) {   // predefined progression
+        chord = chordProgressions[currentProgression][progressionIndex];
+
+        // --- Print the full 8-chord progression ---
+        printf("Progression %d: ", currentProgression);
+        for (int i = 0; i < 8; i++) {
+            int c = chordProgressions[currentProgression][i];
+            printf("%s ", chordLetters[c]);
+        }
+        printf("\n");
+
+        // --- Print arrow under current chord ---
+        printf("               "); // align under "Progression X: "
+        for (int i = 0; i < 8; i++) {
+            int c = chordProgressions[currentProgression][i];
+            int len = strlen(chordLetters[c]);
+            if (i == progressionIndex) {
+                printf("^");
+                for (int j = 1; j < len; j++) printf(" "); // pad to match chord width
+            } else {
+                for (int j = 0; j < len; j++) printf(" "); // spaces for other chords
+            }
+            printf(" "); // space between chords
+        }
+        printf("\n");
+
+        // increment index for next call
+        progressionIndex = (progressionIndex + 1) % 8;
+
+    } else {  // random transition mode
+        int randVal = rand() % 100;
+
+        if (!useMinorMode) {  // Major
+            for (int i = 0; i < 6; i++) {
+                if (nextChord_major[currentChord][i] == -1) break;
+                if (randVal < chordProbabilities_major[currentChord][i]) {
+                    chord = nextChord_major[currentChord][i];
+                    currentChord = chord;
+                    break;
+                }
+            }
+        } else {  // Minor
+            for (int i = 0; i < 6; i++) {
+                if (nextChord_minor[currentChord][i] == -1) break;
+                if (randVal < chordProbabilities_minor[currentChord][i]) {
+                    chord = nextChord_minor[currentChord][i];
+                    currentChord = chord;
+                    break;
+                }
+            }
+        }
+    }
+
+    return chord; // fallback to 0 (G or Gm)
 }
 
-// Returns the root note of the chord without any octave changes
+
+//Returns the root note of the chord without any octave changes
 int getBassNote(int chordIndex) {
   return chordNotes[chordIndex][0];
 }
 
-// Returns the root note of the chord with octave changes
+//Returns the root note of the chord with octave changes
 int getBassNoteOct(int chordIndex) {
   int root = chordNotes[chordIndex][0];
 
@@ -298,7 +231,7 @@ int getBassNoteOct(int chordIndex) {
   return root;
 }
 
-// Returns the bass note of the chord with alternating root fifth changes
+//Returns the bass note of the chord with alternating root fifth changes
 int getBassNoteRootFifth(int chordIndex) {
   static bool returnRoot = true;  // remembers last choice
 
@@ -314,7 +247,7 @@ int getBassNoteRootFifth(int chordIndex) {
   return result;
 }
 
-// Call this to get the next note for the banjo
+//Call this to get the next note for the banjo
 int getBanjoNote(int chordIndex) {
   // Select a random pattern if we're at the start of a new roll
   if (banjoStep == 0) {
@@ -346,7 +279,7 @@ int getBanjoNote(int chordIndex) {
   return chord[0];
 }
 
-// Call this to get the next note for a continuously ascending 8-note arpeggio per chord (max 2 octaves, resets)
+//Call this to get the next note for a continuously ascending 8-note arpeggio per chord (max 2 octaves, resets)
 int getArpNoteUp(int chordIndex) {
   static int arpStep = 0;       // total step count within phrase
   static int chordLength = 0;   // length of current chord
@@ -390,7 +323,7 @@ int getArpNoteUp(int chordIndex) {
   return note;
 }
 
-// Call this to get the next note for a continuously descending 8-note arpeggio per chord (2 octaves, resets)
+//Call this to get the next note for a continuously descending 8-note arpeggio per chord (2 octaves, resets)
 int getArpNoteDown(int chordIndex) {
   static int arpStep = 0;        // total step count within phrase
   static int chordLength = 0;    // length of current chord
@@ -434,7 +367,7 @@ int getArpNoteDown(int chordIndex) {
   return note;
 }
 
-// Call this to get the next note for a continuously ascending then descending 8-note arpeggio per chord (2 octaves, resets)
+//Call this to get the next note for a continuously ascending then descending 8-note arpeggio per chord (2 octaves, resets)
 int getArpNotePingPong(int chordIndex) {
   static int arpStep = 0;        // total step count within phrase
   static int chordLength = 0;    // length of current chord
@@ -487,7 +420,7 @@ int getArpNotePingPong(int chordIndex) {
   return note;
 }
 
-// Call this to get the next note for a continuously descending then ascending 8-note arpeggio per chord (2 octaves, resets)
+//Call this to get the next note for a continuously descending then ascending 8-note arpeggio per chord (2 octaves, resets)
 int getArpNoteReversePingPong(int chordIndex) {
   static int arpStep = 0;         // total step count within phrase
   static int chordLength = 0;     // length of current chord
@@ -540,12 +473,11 @@ int getArpNoteReversePingPong(int chordIndex) {
   return note;
 }
 
-// Procedurally generates the melody
+//Procedurally generates the melody
 int getMelodyNote(int chordIndex) {
   static int melodyStep = 0;
   static int phraseStep = 0;
   static int lastNote = 72;  // start safely in melody range
-  static bool silentPhrase = false;
   static int phraseLength = 12;
 
   // --- Call and response variables ---
@@ -646,7 +578,113 @@ int getMelodyNote(int chordIndex) {
   return currentNote;
 }
 
-//TO DO: edit drum sounds
+//Generates a pseudo-random Gameboy-style noise sample using a 15-bit Linear Feedback Shift Register (LFSR)
+//Basically this outputs 127 or -127 for each sample. this back and forth creates a white noise effect
+int8_t gameboyNoise() {
+  if (--lfsr_countdown <= 0) {
+    lfsr_countdown = lfsr_divisor;
+    uint8_t bit = ((lfsr >> 0) ^ (lfsr >> 1)) & 1;  // XOR the first two bits to create feedback
+    lfsr = (lfsr >> 1) | (bit << 14);               // Shift LFSR right and insert feedback bit at the top
+    if (short_mode) {
+      lfsr = (lfsr & 0b10111111) | (bit << 6);
+    }
+    lfsr_last = (lfsr & 1) ? 127 : -127;
+  }
+  return lfsr_last;  // Output +127 or -127 as a noise sample (audio amplitude for a Gameboy-style hiss)
+}
+
+//updates the oscillator volumes for mute functionality
+void updateOscillatorVolumes() {
+  osc1Volume = osc1Muted ? 0.0 : osc1Volume_orig;
+  osc2Volume = osc2Muted ? 0.0 : osc2Volume_orig;
+  osc3Volume = osc3Muted ? 0.0 : osc3Volume_orig;
+  noiseOscVolume = oscNoiseMuted ? 0.0 : noiseOscVolume_orig;
+}
+
+//changes the oscillator mode so that different instruments play each time the randomize button is pressed
+void oscModeUpdater() {
+  switch (oscMode) {
+
+    case 1:  // Mode 1: all 4 on
+      osc1Muted = false;
+      osc2Muted = false;
+      osc3Muted = false;
+      oscNoiseMuted = false;
+      break;
+
+    case 2:  // Mode 2: bass + lead
+      osc1Muted = false;
+      osc2Muted = true;
+      osc3Muted = false;
+      oscNoiseMuted = true;
+      break;
+
+    case 3:  // Mode 3: lead only
+      osc1Muted = true;
+      osc2Muted = true;
+      osc3Muted = false;
+      oscNoiseMuted = true;
+      break;
+
+    case 4:  // Mode 4: synth (mid) + bass
+      osc1Muted = false;
+      osc2Muted = false;
+      osc3Muted = true;
+      oscNoiseMuted = true;
+      break;
+
+    case 5:  // Mode 5: just middle synth
+      osc1Muted = true;
+      osc2Muted = false;
+      osc3Muted = true;
+      oscNoiseMuted = true;
+      break;
+
+    case 6:  // Mode 6: just white noise
+      osc1Muted = true;
+      osc2Muted = true;
+      osc3Muted = true;
+      oscNoiseMuted = false;
+      break;
+  }
+}
+
+//randomizes the oscillator envelopes each time this is called
+void randomizeEnvelopes() {
+  // --- osc1 — bass ---
+  env1.setADLevels(
+    255,             // attack level stays max
+    random(40, 150)  // random decay level
+  );
+  env1.setTimes(
+    random(3, 40),   // attack time
+    random(10, 80),  // decay time
+    random(10, 60),  // sustain time
+    random(5, 40)    // release time
+  );
+
+  // --- osc2 — mid synth ---
+  env2.setADLevels(
+    255,
+    random(60, 180));
+  env2.setTimes(
+    random(10, 60),
+    random(20, 90),
+    random(10, 80),
+    random(10, 60));
+
+  // --- osc3 — lead ---
+  env3.setADLevels(
+    255,
+    random(10, 70));
+  env3.setTimes(
+    random(1, 20),
+    random(5, 40),
+    random(5, 30),
+    random(5, 30));
+}
+
+//Adjusts envelopes and LFSR for different drum sounds
 void playDrum(DrumType drum) {
   switch (drum) {
     case KICK:
@@ -701,196 +739,128 @@ void playDrum(DrumType drum) {
   noiseEnv.noteOn();
 }
 
+//assigns drum pattern based on randomly generated number
+void updateSequencer(uint8_t randDrumSequence) {
+  if (randDrumSequence > 16) randDrumSequence = 0;  // fallback to 0
+  activeSequence = drumSequences[randDrumSequence];
+  sequenceLength = drumSequenceLengths[randDrumSequence];
+  drumStep = 0;
+}
+
+//triggers next drum sound
+void triggerNextDrum() {
+  playDrum(activeSequence[drumStep]);
+  drumStep++;
+  if (drumStep >= sequenceLength) drumStep = 0;
+}
+
 void loop() {
   audioHook();  // handles Mozzi audio generation behind the scenes
 }
 
-/** Called automatically at rate specified by CONTROL_RATE macro, most of your code should live in here
- */
+//Called automatically at rate specified by CONTROL_RATE macro, most of your code should live in here
 void updateControl() {
   meap.readInputs();
+  updateOscillatorVolumes();  //Update volumes & envelopes continuously
 
-  // Each time you read the potentiometer
-  float potScaleTempo = meap.pot_vals[0] / 4095.0;  // 0.0–1.0
-
-  // Adjust BPM based on pot, proportionally around randTempo
-  // Let's say pot at 0 reduces BPM toward 40, pot at max increases BPM toward 180
+  // --- Tempo / BPM ---
+  float potScaleTempo = meap.pot_vals[0] / 4095.0;  // normalize 0–1
   bpm = randTempo + (potScaleTempo - 0.5) * 2.0 * (randTempo - 40.0);
+  bpm = constrain(bpm, 40.0f, 180.0f);
 
-  // clamp to full range just in case
-  if (bpm < 40.0) bpm = 40.0;
-  if (bpm > 180.0) bpm = 180.0;
+  sixteenth_length = (60.0 / bpm) / (halfTimeToggle ? 2.0f : 4.0f);
 
-  if (halfTimeToggle) {
-    sixteenth_length = (60.0 / bpm) / 2.0;  // recalc sixteenth note length
-  } else {
-    sixteenth_length = (60.0 / bpm) / 4.0;  // recalc sixteenth note length
-  }
+  // --- Global transpose ---
+  float potScaleTranspose = meap.pot_vals[1] / 4095.0;  // 0–1
+  transposer = randTranspose + (int)((potScaleTranspose - 0.5f) * 2.0f * 12);
+  transposer = constrain(transposer, -12, 12);
 
-  // Read potentiometer and normalize
-  float potScale = meap.pot_vals[1] / 4095.0;  // 0.0–1.0
-
-  // Map pot so middle = randTranspose, extremes = +/-12 relative to center
-  int transposer = randTranspose + (int)((potScale - 0.5) * 2.0 * 12);
-
-  // Clamp to stay within valid range -12 → +12
-  if (transposer < -12) transposer = -12;
-  if (transposer > 12) transposer = 12;
-
+  // --- Handle mode change ---
   static bool lastMode = useMinorMode;
-
-  if (useMinorMode != lastMode) {
+  if (lastMode != useMinorMode) {
     lastMode = useMinorMode;
-
     chordNotes = useMinorMode ? chordNotes_minor : chordNotes_major;
     nextChord = useMinorMode ? nextChord_minor : nextChord_major;
     chordProbabilities = useMinorMode ? chordProbabilities_minor : chordProbabilities_major;
   }
 
-  static int bassCounter = 0;  // keep track of bass timing
-
+  // --- Metronome tick ---
+  static int bassCounter = 0;
   if (metro.ready()) {
-    metro.start(sixteenth_length * 1000);  // reset metro
+    metro.start(sixteenth_length * 1000);
 
     // --- Bass ---
     bassCounter++;
-    if (bassCounter % 2 == 0) {  // only trigger every 2 metro ticks (half speed)
-
+    if (bassCounter % 2 == 0) {  // half-speed trigger
       int bassNote;
-
       switch (bassMode) {
-        case 1:
-          bassNote = getBassNote(currentChord);
-          break;
-
-        case 2:
-          bassNote = getBassNoteOct(currentChord);
-          break;
-
-        case 3:
-          bassNote = getBassNoteRootFifth(currentChord);
-          break;
-
-        default:
-          bassNote = getBassNote(currentChord);
-          break;
+        case 1: bassNote = getBassNote(currentChord); break;
+        case 2: bassNote = getBassNoteOct(currentChord); break;
+        case 3: bassNote = getBassNoteRootFifth(currentChord); break;
+        default: bassNote = getBassNote(currentChord); break;
       }
-
-      bassNote -= 24;  // pitch notes down two octaves to mimic bass range
+      bassNote -= 24;  // down 2 octaves
       playRoot = !playRoot;
-      osc1.setFreq(mtof(bassNote + transposer));  // apply global transpose
+      osc1.setFreq(mtof(bassNote + transposer));
       env1.noteOn();
-      //Serial.print("Bass note: ");
-      //Serial.println(bassNote);
     }
 
-    // --- Banjo & Arps ---
-    // int banjoNote = getBanjoNote(currentChord);
-    // banjoNote += 12;                             // pitch notes up one octave to mimic banjo range
-    // osc2.setFreq(mtof(banjoNote + transposer));  // apply global
-
-    //Serial.print("Banjo note: ");
-    //Serial.println(banjoNote);
-
+    // --- Arpeggio / Banjo ---
     int arpNote;
-
     switch (arpMode) {
-      case 1:  // Banjo note
-        arpNote = getBanjoNote(currentChord);
-        break;
-
-      case 2:  // Arpeggio ascending
-        arpNote = getArpNoteUp(currentChord);
-        break;
-
-      case 3:  // Arpeggio descending
-        arpNote = getArpNoteDown(currentChord);
-        break;
-
-      case 4:  // Ping-pong arpeggio
-        arpNote = getArpNotePingPong(currentChord);
-        break;
-
-      case 5:  // Reverse ping-pong arpeggio
-        arpNote = getArpNoteReversePingPong(currentChord);
-        break;
-
-      default:
-        arpNote = getBanjoNote(currentChord);
-        break;
+      case 1: arpNote = getBanjoNote(currentChord); break;
+      case 2: arpNote = getArpNoteUp(currentChord); break;
+      case 3: arpNote = getArpNoteDown(currentChord); break;
+      case 4: arpNote = getArpNotePingPong(currentChord); break;
+      case 5: arpNote = getArpNoteReversePingPong(currentChord); break;
+      default: arpNote = getBanjoNote(currentChord); break;
     }
-
-    arpNote += 12;                             // pitch notes up one octave to mimic banjo range
-    osc2.setFreq(mtof(arpNote + transposer));  // apply global transpose
+    arpNote += 12;  // up 1 octave
+    osc2.setFreq(mtof(arpNote + transposer));
     env2.noteOn();
 
     // --- Melody ---
     int melodyNote = getMelodyNote(currentChord);
-    melodyNote += 12;                             // pitch notes up one octave to mimic banjo range
-    osc3.setFreq(mtof(melodyNote + transposer));  // apply global transpose
+    melodyNote += 12;
+    osc3.setFreq(mtof(melodyNote + transposer));
     env3.noteOn();
 
-    // --- Chord letters ---
-    const char* chordLetters_major[] = { "G", "C", "D", "D7", "A7", "B7", "Em", "Am", "Bm" };
-    const char* chordLetters_minor[] = { "Gm", "Cm", "Dm", "D7", "A7", "B7", "Ebm", "Abm", "Bbm" };
+    // --- Drums ---
+    triggerNextDrum();
 
-    // --- Chord changes ---
     beatCounter++;
     if (beatCounter % beatsPerChord == 0) {
       currentChord = getNextChord();
-
       const char** chordLetters = useMinorMode ? chordLetters_minor : chordLetters_major;
-
       Serial.print("New chord: ");
       Serial.println(chordLetters[currentChord]);
     }
-
-    DrumType drumSequence[] = { KICK, HIHAT, SNARE, HIHAT };  // cycles through
-
-    // --- Drum pattern ---
-    playDrum(drumSequence[drumStep]);
-    drumStep++;
-    if (drumStep >= 3) drumStep = 0;  // loop sequence
-
-    // // --- Trigger noise synced to metronome ---
-    // // current config: trigger every quarter note
-    // static int noiseCounter = 0;
-    // noiseCounter++;
-    // if (noiseCounter % 4 == 0) {
-    //   noiseEnv.setADLevels(255, 0);
-    //   noiseEnv.setTimes(5, 100, 0, 0);
-    //   noiseEnv.noteOn();
-    // }
   }
-
-  // Update volumes
-  updateOscillatorVolumes();
-  // Update envelopes
-  noiseEnv.update();
 }
 
-/** Called automatically at rate specified by AUDIO_RATE macro, for calculating samples sent to DAC, too much code in here can disrupt your output
- */
+//Called automatically at rate specified by AUDIO_RATE macro, for calculating samples sent to DAC, too much code in here can disrupt your output
 AudioOutput_t updateAudio() {
+  // --- Update envelopes ---
   env1.update();
   env2.update();
   env3.update();
+  noiseEnv.update();
+
+  // --- Generate oscillator samples ---
+  int16_t osc1Sample = osc1.next() * osc1Volume * env1.next();
+  int16_t osc2Sample = osc2.next() * osc2Volume * env2.next();
+  int16_t osc3Sample = (!osc3Muted && !silentPhrase) ? osc3.next() * osc3Volume * env3.next() : 0;
+  // --- Generate noise sample ---
   int16_t noiseSample = (gameboyNoise() * noiseEnv.next());
 
-  int16_t mixed = (osc1.next() * osc1Volume * env1.next()) + (osc2.next() * osc2Volume * env2.next())
-                  + (osc3.next() * osc3Volume * env3.next()) + (noiseSample * noiseOscVolume);
+  int32_t mixed = osc1Sample + osc2Sample + osc3Sample + (noiseSample * noiseOscVolume);
 
-  int64_t out_sample = mixed;  // extra effects + mixing if needed
-  // int64_t out_sample = noiseSample;
-  return StereoOutput::fromNBit(14, (out_sample * meap.volume_val) >> 12, (out_sample * meap.volume_val) >> 12);
+  return StereoOutput::fromNBit(16,
+                                (mixed * meap.volume_val) >> 12,
+                                (mixed * meap.volume_val) >> 12);
 }
 
-/**
- * Runs whenever a touch pad is pressed or released
- *
- * int number: the number (0-7) of the pad that was pressed
- * bool pressed: true indicates pad was pressed, false indicates it was released
- */
+//Runs whenever a touch pad is pressed or released
 void updateTouch(int number, bool pressed) {
   if (pressed) {  // Any pad pressed
   } else {        // Any pad released
@@ -955,12 +925,7 @@ void updateTouch(int number, bool pressed) {
   }
 }
 
-/**
- * Runs whenever a DIP switch is toggled
- *
- * int number: the number (0-7) of the switch that was toggled
- * bool up: true indicated switch was toggled up, false indicates switch was toggled
- */
+//Runs whenever a DIP switch is toggled
 void updateDip(int number, bool up) {
   if (up) {  // Any DIP toggled up
   } else {   // Any DIP toggled down
@@ -974,6 +939,10 @@ void updateDip(int number, bool up) {
         oscMode = 1 + rand() % 6;                                      // generates 1–6
         arpMode = 1 + rand() % 5;                                      // generates 1-5
         bassMode = 1 + rand() % 3;                                     // generates 1-3
+        drumMode = 1 + rand() % 16;                                    // generates 1-16
+        randProg = 1 + rand() % 22;                                    // generates 1-22
+        newProg = true;
+        updateSequencer(drumMode);
         //updates the mode
         oscModeUpdater();
         randomizeEnvelopes();
@@ -1041,71 +1010,77 @@ void updateDip(int number, bool up) {
             break;
         }
 
+        // Print current drum sequence
+        Serial.print("Drum Mode: ");
+        Serial.println(drumMode);
+        Serial.print("Active Sequence: ");
+        for (int i = 0; i < sequenceLength; i++) {
+          Serial.print(drumTypeNames[activeSequence[i]]);
+          Serial.print(" ");
+        }
+        Serial.println();
+
 
         switch (oscMode) {
           case 1:
-            Serial.println("All oscillators ON (Bass + Mid + Lead + Noise)");
+            Serial.println("ALL OSCILLATORS ON (BASS + MID + LEAD + NOISE)");
             break;
 
           case 2:
-            Serial.println("Bass + Lead only (no Mid, no Noise)");
+            Serial.println("BASS + LEAD ONLY (NO MID, NO NOISE)");
             break;
 
           case 3:
-            Serial.println("Lead only (solo melody)");
+            Serial.println("LEAD ONLY");
             break;
 
           case 4:
-            Serial.println("Bass + Mid synth");
+            Serial.println("BASS + MID SYNTH ONLY");
             break;
 
           case 5:
-            Serial.println("Mid synth only (banjo/mid)");
+            Serial.println("MID SYNTH ONLY");
             break;
 
           case 6:
-            Serial.println("White noise only (ocean sounds)");
+            Serial.println("WHITE NOISE ONLY (OCEAN SOUNDS)");
             break;
 
           default:
-            Serial.println("Unknown mode");
+            Serial.println("UNKNOWN MODE");
             break;
         }
 
         Serial.println("============================");
 
-        Serial.println("d0 up");
       } else {  // DIP 0
-        Serial.println("d0 down");
       }
       break;
     case 1:
       if (up) {  // DIP 1 up
         useMinorMode = true;
-        Serial.print("Mode switched to minor");
-        Serial.println("d1 up");
+        Serial.println("Mode switched to Minor");
       } else {  // DIP 1 down
         useMinorMode = false;
-        Serial.print("Mode switched to major");
-        Serial.println("d1 down");
+        Serial.println("Mode switched to Major");
       }
       break;
     case 2:
       if (up) {  // DIP 2 up
-        Serial.println("d2 up");
+        chordMode = 0;
+        Serial.println("Chord Mode: Predefined");
       } else {  // DIP 2 down
-        Serial.println("d2 down");
+        chordMode = 1;
+        Serial.println("Chord Mode: Procedual");
       }
       break;
     case 3:
       if (up) {  // DIP 3 up
         halfTimeToggle = true;
-        Serial.println("toggled half time (d3 up)");
-        Serial.println("d3 up");
+        Serial.println("toggled Half Time");
       } else {  // DIP 3 down
         halfTimeToggle = false;
-        Serial.println("toggled normal time (d3 up)");
-        Serial.println("d3 down");
+        Serial.println("toggled Normal Time");
       }
       break;
     case 4:  // Bass mute toggle
