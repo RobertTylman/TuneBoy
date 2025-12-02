@@ -11,7 +11,7 @@ mOscil<sq8192_32harm_int8_NUM_CELLS, AUDIO_RATE, int8_t> osc3(sq8192_32harm_int8
 ADSR<AUDIO_RATE, AUDIO_RATE> env1;
 ADSR<AUDIO_RATE, AUDIO_RATE> env2;
 ADSR<AUDIO_RATE, AUDIO_RATE> env3;
-ADSR<CONTROL_RATE, AUDIO_RATE> noiseEnv;
+ADSR<AUDIO_RATE, AUDIO_RATE> noiseEnv;
 
 //RANDOM VARIABLES:
 int randTempo = 40.0 + ((float)rand() / RAND_MAX) * 140.0;         // random 40–180 BPM
@@ -940,7 +940,7 @@ void updateDip(int number, bool up) {
         arpMode = 1 + rand() % 5;                                      // generates 1-5
         bassMode = 1 + rand() % 3;                                     // generates 1-3
         drumMode = 1 + rand() % 16;                                    // generates 1-16
-        randProg = 1 + rand() % 22;                                    // generates 1-22
+        randProg = 1 + rand() % 44;                                    // generates 1-44
         newProg = true;
         updateSequencer(drumMode);
         //updates the mode
