@@ -1,6 +1,6 @@
 # TuneBoy
 
-![TuneBoy Logo](tuneboy_logo.png)
+<img src="tuneboy_logo.png" width="300" alt="TuneBoy Logo">
 
 **TuneBoy** is a generative music sequencer and synthesizer designed for the Meap board (ESP32). It combines procedural melody generation, smart chord progressions, and a rhythmic drum sequencer to create evolving 4-voice polyphonic music in real-time.
 
