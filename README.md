@@ -25,8 +25,6 @@
     -   **Instrument Modes**: Toggle between full band, minimal synth, or solo modes.
     -   **Performance Features**: Mute individual tracks, change chord progressions on the fly.
 
-## Hardware Requirements
-
 ## The Game Boy Sound Chip (DMG-01) Emulation
 
 TuneBoy is designed to emulate the constraints and aesthetic of the original Nintendo Game Boy (DMG-01) sound hardware (the SHARP LR35902). The original hardware famously featured 4 monophonic channels, which TuneBoy replicates:
@@ -48,11 +46,24 @@ In digital logic, an LFSR generates pseudo-random numbers by taking a binary val
 
 This technique is mathematically identical to how the Game Boy (and NES) hardware generated sound effects.
 
+## Hardware Requirements
+
+-   **Meap Board**: An ESP32-based creative coding platform.
+-   **Audio Output**: Speaker or Headphones connected to the Meap board.
+-   **Controls**: Potentiometers and buttons (standard on Meap) for user interaction.
+
+## Software Dependencies
+
+This project relies on the following libraries:
+
+-   **[Meap Library](https://github.com/masonandrewmann/MEAP)**: Handles input/output and integrates with the Mozzi audio engine. [(Documentation)](https://masonmann.online/electronics/meap/software/)
+-   **[Mozzi](https://github.com/sensorium/Mozzi)**: A sound synthesis library for Arduino/ESP32 (bundled with Meap).
+
 ## Installation
 
 1.  **Install Arduino IDE**: Ensure you have the latest version of the Arduino IDE installed.
 2.  **Install Meap Library**: 
-    -   Download the [Meap Library](https://github.com/mrbid/Meap) as a `.zip` file.
+    -   Download the [Meap Library](https://github.com/masonandrewmann/MEAP) as a `.zip` file from GitHub.
     -   In Arduino IDE, go to **Sketch -> Include Library -> Add .ZIP Library...** and select the downloaded file.
     -   *Note: The Meap library bundles the Mozzi synthesis engine, so no separate install is needed.*
 3.  **Open Project**: Open `Assignment_5.ino` in the Arduino IDE.
