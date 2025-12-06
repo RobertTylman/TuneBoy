@@ -23,10 +23,10 @@ int drumMode = 0;                                                  // keeps trac
 int randProg = 0;
 
 //MIXER
-float osc1Volume_orig = 0.5;      //bass
+float osc1Volume_orig = 0.35;     //bass
 float osc2Volume_orig = 0.1;      //mid
-float osc3Volume_orig = 0.6;      //melody
-float noiseOscVolume_orig = 1.0;  //noise
+float osc3Volume_orig = 0.7;      //melody
+float noiseOscVolume_orig = 0.4;  //noise
 
 //Active volumes used for audio:
 float osc1Volume;
@@ -144,73 +144,72 @@ void setup() {
 // chordMode: 0 = predefined progression, 1 = random transitions
 // useMinorMode: true = minor, false = major
 int getNextChord() {
-    int chord = 0;
-    const char** chordLetters = useMinorMode ? chordLetters_minor : chordLetters_major;
-    int (*chordProgressions)[8] = useMinorMode ? chordProgressions_minor : chordProgressions_major;
+  int chord = 0;
+  const char** chordLetters = useMinorMode ? chordLetters_minor : chordLetters_major;
+  int(*chordProgressions)[8] = useMinorMode ? chordProgressions_minor : chordProgressions_major;
 
-    // If we're at the start of a new progression (progressionIndex == 0), pick a random progression
-    if (newProg) {
-        currentProgression = randProg;
-        progressionIndex = 0;
-        newProg = false;
+  // If we're at the start of a new progression (progressionIndex == 0), pick a random progression
+  if (newProg) {
+    currentProgression = randProg;
+    progressionIndex = 0;
+    newProg = false;
+  }
+
+  if (chordMode == 0) {  // predefined progression
+    chord = chordProgressions[currentProgression][progressionIndex];
+
+    // --- Print the full 8-chord progression ---
+    printf("Progression %d: ", currentProgression);
+    for (int i = 0; i < 8; i++) {
+      int c = chordProgressions[currentProgression][i];
+      printf("%s ", chordLetters[c]);
     }
+    printf("\n");
 
-    if (chordMode == 0) {   // predefined progression
-        chord = chordProgressions[currentProgression][progressionIndex];
-
-        // --- Print the full 8-chord progression ---
-        printf("Progression %d: ", currentProgression);
-        for (int i = 0; i < 8; i++) {
-            int c = chordProgressions[currentProgression][i];
-            printf("%s ", chordLetters[c]);
-        }
-        printf("\n");
-
-        // --- Print arrow under current chord ---
-        printf("               "); // align under "Progression X: "
-        for (int i = 0; i < 8; i++) {
-            int c = chordProgressions[currentProgression][i];
-            int len = strlen(chordLetters[c]);
-            if (i == progressionIndex) {
-                printf("^");
-                for (int j = 1; j < len; j++) printf(" "); // pad to match chord width
-            } else {
-                for (int j = 0; j < len; j++) printf(" "); // spaces for other chords
-            }
-            printf(" "); // space between chords
-        }
-        printf("\n");
-
-        // increment index for next call
-        progressionIndex = (progressionIndex + 1) % 8;
-
-    } else {  // random transition mode
-        int randVal = rand() % 100;
-
-        if (!useMinorMode) {  // Major
-            for (int i = 0; i < 6; i++) {
-                if (nextChord_major[currentChord][i] == -1) break;
-                if (randVal < chordProbabilities_major[currentChord][i]) {
-                    chord = nextChord_major[currentChord][i];
-                    currentChord = chord;
-                    break;
-                }
-            }
-        } else {  // Minor
-            for (int i = 0; i < 6; i++) {
-                if (nextChord_minor[currentChord][i] == -1) break;
-                if (randVal < chordProbabilities_minor[currentChord][i]) {
-                    chord = nextChord_minor[currentChord][i];
-                    currentChord = chord;
-                    break;
-                }
-            }
-        }
+    // --- Print arrow under current chord ---
+    printf("               ");  // align under "Progression X: "
+    for (int i = 0; i < 8; i++) {
+      int c = chordProgressions[currentProgression][i];
+      int len = strlen(chordLetters[c]);
+      if (i == progressionIndex) {
+        printf("^");
+        for (int j = 1; j < len; j++) printf(" ");  // pad to match chord width
+      } else {
+        for (int j = 0; j < len; j++) printf(" ");  // spaces for other chords
+      }
+      printf(" ");  // space between chords
     }
+    printf("\n");
 
-    return chord; // fallback to 0 (G or Gm)
+    // increment index for next call
+    progressionIndex = (progressionIndex + 1) % 8;
+
+  } else {  // random transition mode
+    int randVal = rand() % 100;
+
+    if (!useMinorMode) {  // Major
+      for (int i = 0; i < 6; i++) {
+        if (nextChord_major[currentChord][i] == -1) break;
+        if (randVal < chordProbabilities_major[currentChord][i]) {
+          chord = nextChord_major[currentChord][i];
+          currentChord = chord;
+          break;
+        }
+      }
+    } else {  // Minor
+      for (int i = 0; i < 6; i++) {
+        if (nextChord_minor[currentChord][i] == -1) break;
+        if (randVal < chordProbabilities_minor[currentChord][i]) {
+          chord = nextChord_minor[currentChord][i];
+          currentChord = chord;
+          break;
+        }
+      }
+    }
+  }
+
+  return chord;  // fallback to 0 (G or Gm)
 }
-
 
 //Returns the root note of the chord without any octave changes
 int getBassNote(int chordIndex) {
@@ -673,15 +672,43 @@ void randomizeEnvelopes() {
     random(10, 80),
     random(10, 60));
 
-  // --- osc3 — lead ---
+  // --- osc3 — lead (improved: sometimes long attack, sometimes long sustain) ---
+  int behavior = random(0, 100);  // decide envelope shape
+
+  int attackTime, decayTime, sustainTime, releaseTime;
+  int decayLevel = random(20, 100);  // slightly softer for expressiveness
+
+  if (behavior < 40) {
+    // --- SHORT attack, SHORT sustain (plucky lead) ---
+    attackTime  = random(1, 12);
+    decayTime   = random(5, 25);
+    sustainTime = random(5, 25);
+    releaseTime = random(5, 25);
+  } else if (behavior < 70) {
+    // --- LONG attack, SHORT sustain (pad / swell lead) ---
+    attackTime  = random(20, 80);
+    decayTime   = random(10, 40);
+    sustainTime = random(5, 30);
+    releaseTime = random(10, 40);
+  } else {
+    // --- SHORT attack, LONG sustain (held melodic lead) ---
+    attackTime  = random(1, 15);
+    decayTime   = random(5, 30);
+    sustainTime = random(40, 120); // extended melodic sustain
+    releaseTime = random(20, 60);
+  }
+
   env3.setADLevels(
     255,
-    random(10, 70));
+    decayLevel
+  );
+
   env3.setTimes(
-    random(1, 20),
-    random(5, 40),
-    random(5, 30),
-    random(5, 30));
+    attackTime,
+    decayTime,
+    sustainTime,
+    releaseTime
+  );
 }
 
 //Adjusts envelopes and LFSR for different drum sounds
@@ -1043,7 +1070,7 @@ void updateDip(int number, bool up) {
             break;
 
           case 6:
-            Serial.println("WHITE NOISE ONLY (OCEAN SOUNDS)");
+            Serial.println("WHITE NOISE ONLY (DRUM MACHINE)");
             break;
 
           default:
