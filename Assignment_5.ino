@@ -1163,8 +1163,8 @@ void updateControl() {
           useMinorMode ? chordLetters_minor : chordLetters_major;
       Serial.print("New chord: ");
       Serial.println(chordLetters[currentChord]);
-      //Serial.print("Next Target: ");
-      //Serial.println(chordLetters[nextTargetChord]);
+      // Serial.print("Next Target: ");
+      // Serial.println(chordLetters[nextTargetChord]);
     }
   }
 }
@@ -1276,7 +1276,7 @@ void updateDip(int number, bool up) {
       arpMode = 1 + rand() % 5;   // generates 1-5
       bassMode = 1 + rand() % 3;  // generates 1-3
       drumMode = 1 + rand() % 16; // generates 1-16
-      randProg = 1 + rand() % 44; // generates 1-44
+      randProg = 1 + rand() % 50; // generates 1-50
       newProg = true;
       updateSequencer(drumMode);
       // updates the mode

@@ -15,7 +15,7 @@ Every time the **Randomize** function is triggered, the system generates a new "
 | **〰️ Arpeggio Mode** | 1–5 | ❌ | Pattern logic for Mid voice (Up, Down, etc.). | 5 |
 | **🎸 Bass Mode** | 1–3 | ❌ | Bassline logic (Root, Octaves, Fifth). | 3 |
 | **🥁 Drum Mode** | 1–16 | ❌ | Selects drum pattern. | 16 |
-| **🔄 Chord Prog** | 1–44 | ❌ | Selects harmonic progression. | 44 |
+| **🔄 Chord Prog** | 1–50 | ❌ | Selects harmonic progression. | 50 |
 
 ---
 
@@ -30,7 +30,7 @@ The melody is not a loop; it is a **Markov-Chain-style Random Walk** with intell
 *   **Quantization**: Every note is mathematically snapped to the current chord's scale to ensure no dissonant clashes.
 
 ### B. The Chord Logic
-*   **Predefined Mode**: Cycles through one of 44 expert-written progressions (e.g., I-vi-ii-V).
+*   **Predefined Mode**: Cycles through one of 50 expert-written progressions (e.g., I-IV-I-IV).
 *   **Procedural Mode**: Uses a probabilistic transition table (Markov Chain). For example, if currently on a **V** chord, there might be a 90% chance to resolve to **I** and a 10% chance to deceive to **vi**.
 
 ### C. The Rhythm Engine
@@ -50,13 +50,13 @@ Calculating only the parameters controlled by the Randomize button (excluding ma
 *   **Arpeggio Mode**: 5 options
 *   **Bass Mode**: 3 options
 *   **Drum Mode**: 16 options
-*   **Chord Progressions**: 44 options
+*   **Chord Progressions**: 50 options
 
 $$
-2 \times 6 \times 5 \times 3 \times 16 \times 44 = \mathbf{126,720}
+2 \times 6 \times 5 \times 3 \times 16 \times 50 = \mathbf{144,000}
 $$
 
-**Result**: There are over **126,000** unique "randomized seeds" available at the press of a button.
+**Result**: There are over **144,000** unique "randomized seeds" available at the press of a button.
 *Note: This number increases into the millions if you consider the manual permutations of Tempo, Transpose, and Mutes.*
 
 ### Total Musical Possibilities
