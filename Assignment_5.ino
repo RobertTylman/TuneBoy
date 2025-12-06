@@ -168,6 +168,39 @@ void setup() {
   nextTargetChord = getNextChord(); // Prepare next
 }
 
+// Helper to print the progression and arrow
+void printProgression(int progID, int arrowIndex) {
+  const char **chordLetters =
+      useMinorMode ? chordLetters_minor : chordLetters_major;
+  int(*chordProgressions)[8] =
+      useMinorMode ? chordProgressions_minor : chordProgressions_major;
+
+  // --- Print the full 8-chord progression ---
+  printf("Progression %2d: ", progID);
+  for (int i = 0; i < 8; i++) {
+    int c = chordProgressions[progID][i];
+    printf("%s ", chordLetters[c]);
+  }
+  printf("\n");
+
+  // --- Print arrow under current chord ---
+  printf("                "); // align under "Progression XX: " (16 chars)
+  for (int i = 0; i < 8; i++) {
+    int c = chordProgressions[progID][i];
+    int len = strlen(chordLetters[c]);
+    if (i == arrowIndex) {
+      printf("^");
+      for (int j = 1; j < len; j++)
+        printf(" "); // pad to match chord width
+    } else {
+      for (int j = 0; j < len; j++)
+        printf(" "); // spaces for other chords
+    }
+    printf(" "); // space between chords
+  }
+  printf("\n");
+}
+
 // chordMode: 0 = predefined progression, 1 = random transitions
 // useMinorMode: true = minor, false = major
 int getNextChord() {
@@ -187,31 +220,6 @@ int getNextChord() {
 
   if (chordMode == 0) { // predefined progression
     chord = chordProgressions[currentProgression][progressionIndex];
-
-    // --- Print the full 8-chord progression ---
-    printf("Progression %d: ", currentProgression);
-    for (int i = 0; i < 8; i++) {
-      int c = chordProgressions[currentProgression][i];
-      printf("%s ", chordLetters[c]);
-    }
-    printf("\n");
-
-    // --- Print arrow under current chord ---
-    printf("               "); // align under "Progression X: "
-    for (int i = 0; i < 8; i++) {
-      int c = chordProgressions[currentProgression][i];
-      int len = strlen(chordLetters[c]);
-      if (i == progressionIndex) {
-        printf("^");
-        for (int j = 1; j < len; j++)
-          printf(" "); // pad to match chord width
-      } else {
-        for (int j = 0; j < len; j++)
-          printf(" "); // spaces for other chords
-      }
-      printf(" "); // space between chords
-    }
-    printf("\n");
 
     // increment index for next call
     progressionIndex = (progressionIndex + 1) % 8;
@@ -1165,6 +1173,13 @@ void updateControl() {
       Serial.println(chordLetters[currentChord]);
       // Serial.print("Next Target: ");
       // Serial.println(chordLetters[nextTargetChord]);
+
+      if (chordMode == 0) {
+        // Calculate index of the chord that just started playing
+        // (progInd is already 2 steps ahead due to getNextChord calls)
+        int playingIndex = (progressionIndex - 2 + 8) % 8;
+        printProgression(currentProgression, playingIndex);
+      }
     }
   }
 }
@@ -1276,7 +1291,7 @@ void updateDip(int number, bool up) {
       arpMode = 1 + rand() % 5;   // generates 1-5
       bassMode = 1 + rand() % 3;  // generates 1-3
       drumMode = 1 + rand() % 16; // generates 1-16
-      randProg = 1 + rand() % 50; // generates 1-50
+      randProg = rand() % 50;     // generates 0-49
       newProg = true;
       updateSequencer(drumMode);
       // updates the mode
