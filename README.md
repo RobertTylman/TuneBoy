@@ -78,9 +78,17 @@ This project relies on the following libraries:
 
 Once uploaded, the TuneBoy will immediately start generating music.
 
--   **Tempo Control**: Turn **Potentiometer 0** (leftmost) to adjust the speed between 40 BPM (slow) and 180 BPM (fast).
--   **Mode Switching**: Use the on-board buttons (layout may vary by specific Meap version) to cycle through instrument combinations (e.g., Bass+Drums, Full Band, Solo).
--   **Mute**: Functionality is mapped to specific inputs to drop voices in and out for live arrangement.
+-   **Tempo Control**: Turn **Potentiometer 0** to adjust the speed linearly between 40 BPM and 180 BPM.
+-   **Transposition**: Turn **Potentiometer 1** to pitch-shift the entire sequence between -12 and +12 semitones.
+-   **Global Randomizer**: Toggle **DIP Switch 0** to generate a completely new "song" (randomizes instrument modes, drum patterns, chord progressions, and arpeggiators).
+-   **Scale Selection**: Toggle **DIP Switch 1** to switch between **Major** (Down) and **Minor** (Up) keys.
+-   **Chord Mode**: Toggle **DIP Switch 2** to switch between **Predefined Progressions** (Up) and **Procedural Random Walk** (Down).
+-   **Half Time**: Toggle **DIP Switch 3** to slow the rhythm metric modulation by half.
+-   **Track Mutes**: Use **DIP Switches 4-7** to mute individual voices:
+    -   **DIP 4**: Bass
+    -   **DIP 5**: Mid/Arp
+    -   **DIP 6**: Melody
+    -   **DIP 7**: Drums (Noise)
 
 ## File Structure
 
