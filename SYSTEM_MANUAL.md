@@ -5,12 +5,12 @@ Every time the **Randomize** function is triggered, the system generates a new "
 
 | Parameter | Range/Options | Manual Control? | Description | Count |
 | :--- | :--- | :--- | :--- | :--- |
+| **⏱️ Tempo** | 40–180 BPM | ✅ Pot 0 | Speed of the clock. | 4096 |
 | **🎹 Transpose** | -12 to +12 | ✅ Pot 1 | Global pitch shift in semitones. | 25 |
 | **🎼 Scale Mode** | Major / Minor | ✅ DIP 1 | Determines harmonic ruleset (Chord Qualities, Scales). | 2 |
-| **🎛️ Osc Mutes** | On/Off | ✅ DIP 4-7 | Manually mute Bass, Mid, Melody, or Noise. | 16 |
-| **⏱️ Tempo** | 40–180 BPM | ✅ Pot 0 | Speed of the clock. | 4096 |
-| **🐢 Half Time** | On/Off | ✅ DIP 3 | Toggles half-speed metric modulation. | 2 |
 | **🔄 Chord Mode** | Preset/Procedural | ✅ DIP 2 | Toggles between fixed progression or random walk. | 2 |
+| **🐢 Half Time** | On/Off | ✅ DIP 3 | Toggles half-speed metric modulation. | 2 |
+| **🎛️ Osc Mutes** | On/Off | ✅ DIP 4-7 | Manually mute Bass, Mid, Melody, or Noise. | 16 |
 | **🎛️ Oscillator Mode** | 1–6 | ❌ | Sets active instrument combo (e.g. "Bass+Lead"). | 6 |
 | **〰️ Arpeggio Mode** | 1–5 | ❌ | Pattern logic for Mid voice (Up, Down, etc.). | 5 |
 | **🎸 Bass Mode** | 1–3 | ❌ | Bassline logic (Root, Octaves, Fifth). | 3 |
