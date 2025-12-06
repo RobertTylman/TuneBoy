@@ -161,6 +161,7 @@ int chordProgressions_major[][8] = {
     {3, 6, 1, 4, 2, 5, 3, 6}, // iii-vi-I-IV-ii-V-iii-vi
     {1, 4, 2, 6, 5, 3, 1, 4}, // I-IV-ii-vi-V-iii-I-IV
     {6, 3, 5, 1, 2, 4, 6, 3}, // vi-iii-V-I-ii-IV-vi-iii
+    
     // --- 2-Chord Alternating Progressions ---
     {0, 3, 0, 3, 0, 3, 0, 3}, // I - IV
     {0, 4, 0, 4, 0, 4, 0, 4}, // I - V
@@ -294,6 +295,7 @@ int chordProgressions_minor[][8] = {
     {0, 2, 5, 3, 1, 4, 0, 2}, // i - ii - VII7 - v7 - iv - VI7 - i - ii
     {0, 3, 1, 5, 2, 4, 0, 3}, // i - v7 - iv - VII7 - ii - VI7 - i - v7
     {0, 5, 3, 2, 1, 4, 0, 5}, // i - VII7 - v7 - ii - iv - VI7 - i - VII7
+
     // --- 2-Chord Alternating Progressions ---
     {0, 1, 0, 1, 0, 1, 0, 1}, // i - iv
     {0, 3, 0, 3, 0, 3, 0, 3}, // i - V7
