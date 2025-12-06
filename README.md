@@ -27,23 +27,38 @@
 
 ## Hardware Requirements
 
--   **Meap Board**: An ESP32-based creative coding platform.
--   **Audio Output**: Speaker or Headphones connected to the Meap board.
--   **Controls**: Potentiometers and buttons (standard on Meap) for user interaction.
+## The Game Boy Sound Chip (DMG-01) Emulation
 
-## Software Dependencies
+TuneBoy is designed to emulate the constraints and aesthetic of the original Nintendo Game Boy (DMG-01) sound hardware (the SHARP LR35902). The original hardware famously featured 4 monophonic channels, which TuneBoy replicates:
 
-This project relies on the following libraries:
+1.  **Channel 1 (Pulse/Square)**: Traditionally used for melody. In TuneBoy, this is the **Lead Melody** voice.
+2.  **Channel 2 (Pulse/Square)**: Traditionally used for harmony. In TuneBoy, this is the **Mid Synth**.
+3.  **Channel 3 (Wave)**: A variable wavetable channel often used for bass. In TuneBoy, this is the **Bass** voice.
+4.  **Channel 4 (Noise)**: A pseudo-random noise generator used for percussion and effects. In TuneBoy, this is the **Drum** channel.
 
--   **[Meap Library](https://github.com/mrbid/Meap)**: Handles input/output and integrates with the Mozzi audio engine.
--   **Mozzi**: A sound synthesis library for Arduino/ESP32 (bundled with Meap).
+By strictly adhering to this 4-voice limit, TuneBoy recreates the "chip tune" sound where voices must often drop out to make room for others, forcing creative economy in arrangement.
+
+## Under the Hood: LFSR & Noise
+
+To authentically recreate the Game Boy's percussion, TuneBoy uses a **Linear Feedback Shift Register (LFSR)** instead of playing back recorded drum samples. 
+
+In digital logic, an LFSR generates pseudo-random numbers by taking a binary value, shifting it, and using the "exclusive OR" (XOR) of specific bits to create a feedback bit. 
+-   **Long Mode (15-bit)**: Produces a "white noise" hiss, perfect for **Snares** and **Hi-Hats**.
+-   **Short Mode (7-bit)**: Creates a metallic, repeating buzzing loop, used for **Cymbals** or **Robotic Bass** tones.
+
+This technique is mathematically identical to how the Game Boy (and NES) hardware generated sound effects.
 
 ## Installation
 
 1.  **Install Arduino IDE**: Ensure you have the latest version of the Arduino IDE installed.
-2.  **Install Meap Library**: Follow the installation instructions for the Meap library.
+2.  **Install Meap Library**: 
+    -   Download the [Meap Library](https://github.com/mrbid/Meap) as a `.zip` file.
+    -   In Arduino IDE, go to **Sketch -> Include Library -> Add .ZIP Library...** and select the downloaded file.
+    -   *Note: The Meap library bundles the Mozzi synthesis engine, so no separate install is needed.*
 3.  **Open Project**: Open `Assignment_5.ino` in the Arduino IDE.
-4.  **Select Board**: Choose "ESP32 Dev Module" (or your specific Meap configuration).
+4.  **Select Board**: 
+    -   Go to **Tools -> Board -> ESP32 Arduino**.
+    -   Select **ESP32 Dev Module** (or your specific compatible board).
 5.  **Upload**: Connect your Meap board via USB and click the Upload button.
 
 ## Usage
