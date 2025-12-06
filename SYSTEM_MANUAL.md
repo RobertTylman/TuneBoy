@@ -57,7 +57,7 @@ $$
 $$
 
 **Result**: There are over **144,000** unique "randomized seeds" available at the press of a button.
-*Note: This number explodes into the millions if you consider the manual permutations of Tempo, Transpose, and Mutes.*
+*Note: This number grows into the millions if you consider the manual permutations of Tempo, Transpose, and Mutes.*
 
 ### Total Musical Possibilities
 Since the **Melody** and **Rhythm** are procedurally generated in real-time and technically infinite (never looping exactly the same way twice), the actual number of possible audio output streams is **Infinite**.
