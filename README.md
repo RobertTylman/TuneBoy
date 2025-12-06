@@ -27,6 +27,12 @@
     -   **Instrument Modes**: Toggle between full band, minimal synth, or solo modes.
     -   **Performance Features**: Mute individual tracks, change chord progressions on the fly.
 
+-   **Connectivity**:
+    -   **MIDI Output**: Sends note data over Serial1 (TX pin) for external synth control.
+        -   **Ch 1**: Bass
+        -   **Ch 2**: Arp/Mid
+        -   **Ch 3**: Melody
+
 ## The Game Boy Sound Chip (DMG-01) Emulation
 
 TuneBoy is designed to emulate the constraints and aesthetic of the original Nintendo Game Boy (DMG-01) sound hardware (the SHARP LR35902). The original hardware famously featured 4 monophonic channels, which TuneBoy replicates:

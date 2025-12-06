@@ -5,12 +5,12 @@ Every time the **Randomize** function is triggered, the system generates a new "
 
 | Parameter | Range/Options | Manual Control? | Description | Count |
 | :--- | :--- | :--- | :--- | :--- |
-| **⏱️ Tempo** | 40–180 BPM | ✅ Pot 0 | Speed of the clock. | 4096 |
 | **🎹 Transpose** | -12 to +12 | ✅ Pot 1 | Global pitch shift in semitones. | 25 |
 | **🎼 Scale Mode** | Major / Minor | ✅ DIP 1 | Determines harmonic ruleset (Chord Qualities, Scales). | 2 |
-| **🔄 Chord Mode** | Preset/Procedural | ✅ DIP 2 | Toggles between fixed progression or random walk. | 2 |
-| **🐢 Half Time** | On/Off | ✅ DIP 3 | Toggles half-speed metric modulation. | 2 |
 | **🎛️ Osc Mutes** | On/Off | ✅ DIP 4-7 | Manually mute Bass, Mid, Melody, or Noise. | 16 |
+| **⏱️ Tempo** | 40–180 BPM | ✅ Pot 0 | Speed of the clock. | 4096 |
+| **🐢 Half Time** | On/Off | ✅ DIP 3 | Toggles half-speed metric modulation. | 2 |
+| **🔄 Chord Mode** | Preset/Procedural | ✅ DIP 2 | Toggles between fixed progression or random walk. | 2 |
 | **🎛️ Oscillator Mode** | 1–6 | ❌ | Sets active instrument combo (e.g. "Bass+Lead"). | 6 |
 | **〰️ Arpeggio Mode** | 1–5 | ❌ | Pattern logic for Mid voice (Up, Down, etc.). | 5 |
 | **🎸 Bass Mode** | 1–3 | ❌ | Bassline logic (Root, Octaves, Fifth). | 3 |
@@ -57,7 +57,7 @@ $$
 $$
 
 **Result**: There are over **144,000** unique "randomized seeds" available at the press of a button.
-*Note: This number increases into the millions if you consider the manual permutations of Tempo, Transpose, and Mutes.*
+*Note: This number explodes into the millions if you consider the manual permutations of Tempo, Transpose, and Mutes.*
 
 ### Total Musical Possibilities
 Since the **Melody** and **Rhythm** are procedurally generated in real-time and technically infinite (never looping exactly the same way twice), the actual number of possible audio output streams is **Infinite**.
@@ -67,3 +67,16 @@ Even if we locked the melody to a 16-step phrase with 2 octaves of range:
 *   $24^{16} \approx 1.3 \times 10^{22}$ unique melodies *per phrase*.
 
 **Conclusion**: You will likely never hear the exact same minute of music twice.
+
+---
+
+## 4. Connectivity & MIDI
+TuneBoy is more than just a self-contained synth; it can drive your entire studio.
+
+*   **MIDI Out**: Emits standard MIDI Note On/Off messages via `Serial1` (TX Pin).
+*   **Baud Rate**: 31250 bps (Standard MIDI).
+*   **Channel Mapping**:
+    *   **Channel 1**: Bass (Anchors the progression).
+    *   **Channel 2**: Arpeggiator (Provides motion).
+    *   **Channel 3**: Melody (The "Smart" Lead).
+    *   *(Channel 10/Drums are internal only via Noise channel).*
