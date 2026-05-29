@@ -100,5 +100,5 @@ Once uploaded, the TuneBoy will immediately start generating music.
 
 ## File Structure
 
--   `Assignment_5.ino`: The main application code containing the synthesizer engine, sequencer logic, and procedural generation algorithms.
+-   `TuneBoy.ino`: The main application code containing the synthesizer engine, sequencer logic, and procedural generation algorithms.
 -   `ChordData.h`: A large database of chord definitions, scales, and transition probabilities for music theory logic.
